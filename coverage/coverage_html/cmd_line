@@ -1,0 +1,1 @@
+genhtml coverage.lcov -o coverage_html --ignore-errors range

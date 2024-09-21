@@ -1,0 +1,118 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.lcov - tests/mocks/mock_positions.cairo</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html" title="Click to go to top-level">top level</a> - <a href="index.html" title="Click to go to directory tests/mocks">tests/mocks</a> - mock_positions.cairo<span style="font-size: 80%;"> (source / <a href="mock_positions.cairo.func-c.html" title="Click to go to function table">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.lcov</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">62.5&nbsp;%</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">5</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2025-06-16 08:58:28</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">40.0&nbsp;%</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">2</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : // Mock Positions contract that only implements methods used by EkuboDistributedERC20</span>
+<span id="L2"><span class="lineNum">       2</span>              : #[starknet::contract]</span>
+<span id="L3"><span class="lineNum">       3</span>              : mod MockPositions {</span>
+<span id="L4"><span class="lineNum">       4</span>              :     use ekubo::extensions::interfaces::twamm::OrderKey;</span>
+<span id="L5"><span class="lineNum">       5</span>              :     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};</span>
+<span id="L6"><span class="lineNum">       6</span>              : </span>
+<span id="L7"><span class="lineNum">       7</span>              :     #[storage]</span>
+<span id="L8"><span class="lineNum">       8</span>              :     struct Storage {</span>
+<span id="L9"><span class="lineNum">       9</span>              :         token_id_counter: u64,</span>
+<span id="L10"><span class="lineNum">      10</span>              :         sale_rate_counter: u128,</span>
+<span id="L11"><span class="lineNum">      11</span>              :     }</span>
+<span id="L12"><span class="lineNum">      12</span>              : </span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">           3 :     #[external(v0)]</span></span>
+<span id="L14"><span class="lineNum">      14</span>              :     fn mint_and_increase_sell_amount(</span>
+<span id="L15"><span class="lineNum">      15</span>              :         ref self: ContractState, order_key: OrderKey, amount: u128</span>
+<span id="L16"><span class="lineNum">      16</span>              :     ) -&gt; (u64, u128) {</span>
+<span id="L17"><span class="lineNum">      17</span>              :         // Increment first so we start at 1, not 0</span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">           3 :         let new_token_id = self.token_id_counter.read() + 1;</span></span>
+<span id="L19"><span class="lineNum">      19</span> <span class="tlaGNC">           3 :         self.token_id_counter.write(new_token_id);</span></span>
+<span id="L20"><span class="lineNum">      20</span>              :         </span>
+<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">           3 :         let sale_rate = amount / (order_key.end_time - order_key.start_time).into();</span></span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC">           3 :         self.sale_rate_counter.write(sale_rate);</span></span>
+<span id="L23"><span class="lineNum">      23</span>              :         </span>
+<span id="L24"><span class="lineNum">      24</span>              :         (new_token_id, sale_rate)</span>
+<span id="L25"><span class="lineNum">      25</span>              :     }</span>
+<span id="L26"><span class="lineNum">      26</span>              : </span>
+<span id="L27"><span class="lineNum">      27</span> <span class="tlaUNC">           0 :     #[external(v0)]</span></span>
+<span id="L28"><span class="lineNum">      28</span>              :     fn withdraw_proceeds_from_sale_to_self(</span>
+<span id="L29"><span class="lineNum">      29</span>              :         ref self: ContractState, id: u64, order_key: OrderKey</span>
+<span id="L30"><span class="lineNum">      30</span>              :     ) -&gt; u128 {</span>
+<span id="L31"><span class="lineNum">      31</span>              :         // Mock implementation - return a fixed amount</span>
+<span id="L32"><span class="lineNum">      32</span>              :         1000</span>
+<span id="L33"><span class="lineNum">      33</span>              :     }</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaUNC">           0 :     #[external(v0)]</span></span>
+<span id="L36"><span class="lineNum">      36</span>              :     fn increase_sell_amount(</span>
+<span id="L37"><span class="lineNum">      37</span>              :         ref self: ContractState, id: u64, order_key: OrderKey, amount: u128</span>
+<span id="L38"><span class="lineNum">      38</span>              :     ) -&gt; u128 {</span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaUNC">           0 :         let sale_rate = amount / (order_key.end_time - order_key.start_time).into();</span></span>
+<span id="L40"><span class="lineNum">      40</span>              :         sale_rate</span>
+<span id="L41"><span class="lineNum">      41</span>              :     }</span>
+<span id="L42"><span class="lineNum">      42</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.3.1-10.g3910185</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

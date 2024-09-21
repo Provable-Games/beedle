@@ -1,0 +1,16 @@
+{
+	"name": "Cairo",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"runArgs": ["--network=host"],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"starkware.cairo1",
+				"tamasfe.even-better-toml"
+
+			]
+		}
+	}
+}

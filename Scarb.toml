@@ -1,0 +1,28 @@
+[package]
+name = "gerc20"
+version = "0.1.0"
+edition = "2024_07"
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+starknet = "2.10.1"
+openzeppelin_token = "1.0.0"
+ekubo = { git = "https://github.com/EkuboProtocol/abis.git", rev = "edb6de8c9baf515f1053bbab3d86825d54a63bc3" }
+
+[dev-dependencies]
+snforge_std = "0.45.0"
+
+[[target.starknet-contract]]
+sierra = true
+
+[scripts]
+test = "snforge test"
+
+[tool.fmt]
+sort-module-level-items = true
+
+[profile.dev.cairo]
+unstable-add-statements-functions-debug-info = true
+unstable-add-statements-code-locations-debug-info = true
+inlining-strategy = "avoid"

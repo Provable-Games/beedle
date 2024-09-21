@@ -1,0 +1,103 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.lcov - src/interfaces.cairo</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html" title="Click to go to top-level">top level</a> - <a href="index.html" title="Click to go to directory src">src</a> - interfaces.cairo<span style="font-size: 80%;"> (source / <a href="interfaces.cairo.func-c.html" title="Click to go to function table">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.lcov</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2025-06-16 08:57:09</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">16</td>
+            <td class="headerCovTableEntry">16</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : use starknet::ContractAddress;</span>
+<span id="L2"><span class="lineNum">       2</span>              : use ekubo::extensions::interfaces::twamm::OrderKey;</span>
+<span id="L3"><span class="lineNum">       3</span>              : use ekubo::types::keys::PoolKey;</span>
+<span id="L4"><span class="lineNum">       4</span>              : </span>
+<span id="L5"><span class="lineNum">       5</span> <span class="tlaGNC">          48 : #[starknet::interface]</span></span>
+<span id="L6"><span class="lineNum">       6</span>              : pub trait IEkuboDistributedERC20&lt;TContractState&gt; {</span>
+<span id="L7"><span class="lineNum">       7</span>              :     fn init_distribution_pool(ref self: TContractState);</span>
+<span id="L8"><span class="lineNum">       8</span>              :     fn start_token_distribution(ref self: TContractState, end_time: u64);</span>
+<span id="L9"><span class="lineNum">       9</span>              :     fn claim_and_sell_proceeds(ref self: TContractState);</span>
+<span id="L10"><span class="lineNum">      10</span>              :     fn get_deployed_at(self: @TContractState) -&gt; u64;</span>
+<span id="L11"><span class="lineNum">      11</span>              :     fn get_distribution_end_time(self: @TContractState) -&gt; u64;</span>
+<span id="L12"><span class="lineNum">      12</span>              :     fn get_distribution_order_key(self: @TContractState) -&gt; OrderKey;</span>
+<span id="L13"><span class="lineNum">      13</span>              :     fn get_distribution_pool_key(self: @TContractState) -&gt; PoolKey;</span>
+<span id="L14"><span class="lineNum">      14</span>              :     fn get_distribution_start_time(self: @TContractState) -&gt; u64;</span>
+<span id="L15"><span class="lineNum">      15</span>              :     fn get_extension_address(self: @TContractState) -&gt; ContractAddress;</span>
+<span id="L16"><span class="lineNum">      16</span>              :     fn get_payment_token(self: @TContractState) -&gt; ContractAddress;</span>
+<span id="L17"><span class="lineNum">      17</span>              :     fn get_pool_fee(self: @TContractState) -&gt; u128;</span>
+<span id="L18"><span class="lineNum">      18</span>              :     fn get_pool_id(self: @TContractState) -&gt; u256;</span>
+<span id="L19"><span class="lineNum">      19</span>              :     fn get_position_token_id(self: @TContractState) -&gt; u64;</span>
+<span id="L20"><span class="lineNum">      20</span>              :     fn get_reward_distribution_duration(self: @TContractState) -&gt; u64;</span>
+<span id="L21"><span class="lineNum">      21</span>              :     fn get_reward_distribution_rate(self: @TContractState) -&gt; u128;</span>
+<span id="L22"><span class="lineNum">      22</span>              :     fn get_reward_order_key(self: @TContractState) -&gt; OrderKey;</span>
+<span id="L23"><span class="lineNum">      23</span>              :     fn get_reward_token(self: @TContractState) -&gt; ContractAddress;</span>
+<span id="L24"><span class="lineNum">      24</span>              :     fn get_token_distribution_rate(self: @TContractState) -&gt; u128;</span>
+<span id="L25"><span class="lineNum">      25</span>              :     fn get_tick_spacing(self: @TContractState) -&gt; u32;</span>
+<span id="L26"><span class="lineNum">      26</span>              :     // TODO: add pool key hash</span>
+<span id="L27"><span class="lineNum">      27</span>              : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.3.1-10.g3910185</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

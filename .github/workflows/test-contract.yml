@@ -1,0 +1,67 @@
+name: test-contracts
+
+env:
+  SCARB_VERSION: 2.10.1
+  STARKNET_FOUNDRY_VERSION: 0.45.0
+
+on:
+  pull_request:
+    paths-ignore:
+      - "ui/**"
+      - "**/manifest.json"
+      - ".github/**"
+      - "pnpm-lock.yaml"
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+
+  sozo-test:
+    needs: [setup-environment]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Universal Sierra Compiler
+        run: |
+          curl -L https://raw.githubusercontent.com/software-mansion/universal-sierra-compiler/master/scripts/install.sh | sh
+      - name: Install Starknet Foundry
+        run: |
+          curl -L -o starknet-foundry.tar.gz https://github.com/foundry-rs/starknet-foundry/releases/download/v${{ env.STARKNET_FOUNDRY_VERSION }}/starknet-foundry-v${{ env.STARKNET_FOUNDRY_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf starknet-foundry.tar.gz
+          sudo cp starknet-foundry-v${{ env.STARKNET_FOUNDRY_VERSION }}-x86_64-unknown-linux-gnu/bin/* /usr/local/bin/
+          snforge --version
+          sncast --version
+        
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+      - name: Run Scarb Build
+        run: |
+          scarb build
+      - name: Run Tests
+        run: |
+          snforge test
+
+  scarb-fmt:
+    needs: [setup-environment]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+      - run: scarb fmt --check

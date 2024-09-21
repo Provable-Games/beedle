@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.lcov - tests/test_contract.cairo</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../index.html" title="Click to go to top-level">top level</a> - <a href="index.html" title="Click to go to directory tests">tests</a> - test_contract.cairo<span style="font-size: 80%;"> (source / <a href="test_contract.cairo.func-c.html" title="Click to go to function table">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.lcov</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">13</td>
+            <td class="headerCovTableEntry">13</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2025-06-16 08:57:09</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">5</td>
+          </tr>
+                  <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : use core::num::traits::Zero;</span>
+<span id="L2"><span class="lineNum">       2</span>              : use core::result::ResultTrait;</span>
+<span id="L3"><span class="lineNum">       3</span> <span class="tlaGNC">          12 : use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};</span></span>
+<span id="L4"><span class="lineNum">       4</span>              : use starknet::{ContractAddress, contract_address_const};</span>
+<span id="L5"><span class="lineNum">       5</span>              : </span>
+<span id="L6"><span class="lineNum">       6</span>              : // Simple test to verify the test framework works</span>
+<span id="L7"><span class="lineNum">       7</span>              : #[test]</span>
+<span id="L8"><span class="lineNum">       8</span>              : fn test_basic_arithmetic() {</span>
+<span id="L9"><span class="lineNum">       9</span>              :     let a = 2;</span>
+<span id="L10"><span class="lineNum">      10</span>              :     let b = 3;</span>
+<span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC">           3 :     assert(a + b == 5, 'Basic math failed');</span></span>
+<span id="L12"><span class="lineNum">      12</span> <span class="tlaGNC">           9 : }</span></span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">          12 : </span></span>
+<span id="L14"><span class="lineNum">      14</span> <span class="tlaGNC">           3 : #[test]</span></span>
+<span id="L15"><span class="lineNum">      15</span>              : fn test_address_comparison() {</span>
+<span id="L16"><span class="lineNum">      16</span> <span class="tlaGNC">           3 :     assert(contract_address_const::&lt;0x123&gt;() != contract_address_const::&lt;0&gt;(), 'Addresses should differ');</span></span>
+<span id="L17"><span class="lineNum">      17</span> <span class="tlaGNC">           6 :     assert(contract_address_const::&lt;0&gt;() == Zero::&lt;ContractAddress&gt;::zero(), 'Zero address mismatch');</span></span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">           6 : }</span></span>
+<span id="L19"><span class="lineNum">      19</span> <span class="tlaGNC">           6 : </span></span>
+<span id="L20"><span class="lineNum">      20</span> <span class="tlaGNC">           3 : // Test that we can declare the contracts</span></span>
+<span id="L21"><span class="lineNum">      21</span>              : #[test]</span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC">           6 : fn test_declare_contracts() {</span></span>
+<span id="L23"><span class="lineNum">      23</span> <span class="tlaGNC">           9 :     // Declare main contract</span></span>
+<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC">           3 :     let main_contract_result = declare(&quot;EkuboDistributedERC20&quot;);</span></span>
+<span id="L25"><span class="lineNum">      25</span>              :     assert(main_contract_result.is_ok(), 'Main contract fail');</span>
+<span id="L26"><span class="lineNum">      26</span>              :     </span>
+<span id="L27"><span class="lineNum">      27</span>              :     // Declare mock contracts</span>
+<span id="L28"><span class="lineNum">      28</span>              :     let core_result = declare(&quot;MockCore&quot;);</span>
+<span id="L29"><span class="lineNum">      29</span>              :     assert(core_result.is_ok(), 'MockCore fail');</span>
+<span id="L30"><span class="lineNum">      30</span>              :     </span>
+<span id="L31"><span class="lineNum">      31</span>              :     let positions_result = declare(&quot;MockPositions&quot;);</span>
+<span id="L32"><span class="lineNum">      32</span>              :     assert(positions_result.is_ok(), 'MockPositions fail');</span>
+<span id="L33"><span class="lineNum">      33</span>              :     </span>
+<span id="L34"><span class="lineNum">      34</span>              :     let registry_result = declare(&quot;MockTokenRegistry&quot;);</span>
+<span id="L35"><span class="lineNum">      35</span>              :     assert(registry_result.is_ok(), 'MockRegistry fail');</span>
+<span id="L36"><span class="lineNum">      36</span>              : }</span>
+<span id="L37"><span class="lineNum">      37</span>              : </span>
+<span id="L38"><span class="lineNum">      38</span>              : // Test mock deployment</span>
+<span id="L39"><span class="lineNum">      39</span>              : #[test]</span>
+<span id="L40"><span class="lineNum">      40</span>              : fn test_deploy_mocks() {</span>
+<span id="L41"><span class="lineNum">      41</span>              :     // Deploy mock core</span>
+<span id="L42"><span class="lineNum">      42</span>              :     let core_contract = declare(&quot;MockCore&quot;).unwrap().contract_class();</span>
+<span id="L43"><span class="lineNum">      43</span>              :     let (core_address, _) = core_contract.deploy(@array![]).unwrap();</span>
+<span id="L44"><span class="lineNum">      44</span>              :     assert(core_address != contract_address_const::&lt;0&gt;(), 'Core deploy failed');</span>
+<span id="L45"><span class="lineNum">      45</span>              :     </span>
+<span id="L46"><span class="lineNum">      46</span>              :     // Deploy mock positions</span>
+<span id="L47"><span class="lineNum">      47</span>              :     let positions_contract = declare(&quot;MockPositions&quot;).unwrap().contract_class();</span>
+<span id="L48"><span class="lineNum">      48</span>              :     let (positions_address, _) = positions_contract.deploy(@array![]).unwrap();</span>
+<span id="L49"><span class="lineNum">      49</span>              :     assert(positions_address != contract_address_const::&lt;0&gt;(), 'Positions deploy failed');</span>
+<span id="L50"><span class="lineNum">      50</span>              :     </span>
+<span id="L51"><span class="lineNum">      51</span>              :     // Deploy mock token registry</span>
+<span id="L52"><span class="lineNum">      52</span>              :     let registry_contract = declare(&quot;MockTokenRegistry&quot;).unwrap().contract_class();</span>
+<span id="L53"><span class="lineNum">      53</span>              :     let (registry_address, _) = registry_contract.deploy(@array![]).unwrap();</span>
+<span id="L54"><span class="lineNum">      54</span>              :     assert(registry_address != contract_address_const::&lt;0&gt;(), 'Registry deploy failed');</span>
+<span id="L55"><span class="lineNum">      55</span>              : }</span>
+<span id="L56"><span class="lineNum">      56</span>              : </span>
+<span id="L57"><span class="lineNum">      57</span>              : // Note: Full integration tests with the EkuboDistributedERC20 contract</span>
+<span id="L58"><span class="lineNum">      58</span>              : // would require fixing the transfer_from issue in the constructor.</span>
+<span id="L59"><span class="lineNum">      59</span>              : // The contract tries to transfer_from itself without approval.</span>
+<span id="L60"><span class="lineNum">      60</span>              : // In a real deployment, this would need to be handled differently.</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.3.1-10.g3910185</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
