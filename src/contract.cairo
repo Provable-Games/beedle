@@ -1,5 +1,6 @@
 /// @title EkuboDistributedERC20
-/// @notice A contract for distributing ERC20 tokens using Ekubo's TWAMM (Time-Weighted Average Market Maker)
+/// @notice A contract for distributing ERC20 tokens using Ekubo's TWAMM (Time-Weighted Average
+/// Market Maker)
 /// @dev This contract extends the ERC20 standard with distribution functionality
 #[starknet::contract]
 mod EkuboDistributedERC20 {
@@ -37,7 +38,6 @@ mod EkuboDistributedERC20 {
         proceeds_distribution_duration: u64,
         purchase_token: ContractAddress,
         rewards_distribution_rate: u128,
-        sale_rate: u128,
         token_distribution_rate: u128,
     }
 
@@ -93,6 +93,7 @@ mod EkuboDistributedERC20 {
         /// @notice Initializes an Ekubo pool for distributing the token supply via a TWAMM order
         /// @dev This function should be called before starting the token distribution
         fn init_distribution_pool(ref self: ContractState) {
+            assert(self.pool_id.read() == 0, Errors::DISTRIBUTION_POOL_ALREADY_INITIALIZED);
             let core_dispatcher = self.core_dispatcher.read();
             let initial_tick = i129 { mag: 0, sign: false };
             let pool_key = _distribution_token_pool_key(@self);
@@ -120,7 +121,9 @@ mod EkuboDistributedERC20 {
         /// @dev This function can be called periodically to reinvest proceeds
         fn claim_and_sell_proceeds(ref self: ContractState) {
             assert(self.pool_id.read() != 0, Errors::DISTRIBUTION_POOL_NOT_INITIALIZED);
-            assert(self.position_token_id.read() != 0, Errors::TOKEN_DISTRIBUTION_NOT_STARTED);            // withdraw proceeds
+            assert(
+                self.position_token_id.read() != 0, Errors::TOKEN_DISTRIBUTION_NOT_STARTED
+            ); // withdraw proceeds
             let positions_dispatcher = self.positions_dispatcher.read();
             let position_token_id = self.position_token_id.read();
             let order_key = _distribution_token_order_key(@self);
@@ -136,6 +139,46 @@ mod EkuboDistributedERC20 {
             let previous_sale_rate = self.rewards_distribution_rate.read();
             let new_sale_rate = previous_sale_rate + sale_rate_increase;
             self.rewards_distribution_rate.write(new_sale_rate);
+        }
+
+        fn get_token_distribution_rate(self: @ContractState) -> u128 {
+            self.token_distribution_rate.read()
+        }
+
+        fn get_rewards_distribution_rate(self: @ContractState) -> u128 {
+            self.rewards_distribution_rate.read()
+        }
+
+        fn get_distribution_end_time(self: @ContractState) -> u64 {
+            self.distribution_end_time.read()
+        }
+
+        fn get_pool_id(self: @ContractState) -> u256 {
+            self.pool_id.read()
+        }
+
+        fn get_position_token_id(self: @ContractState) -> u64 {
+            self.position_token_id.read()
+        }
+
+        fn get_proceeds_distribution_duration(self: @ContractState) -> u64 {
+            self.proceeds_distribution_duration.read()
+        }
+
+        fn get_proceeds_token(self: @ContractState) -> ContractAddress {
+            self.purchase_token.read()
+        }
+
+        fn get_payment_token(self: @ContractState) -> ContractAddress {
+            self.payment_token.read()
+        }
+
+        fn get_extension_address(self: @ContractState) -> ContractAddress {
+            self.extension_address.read()
+        }
+
+        fn get_purchase_token(self: @ContractState) -> ContractAddress {
+            self.purchase_token.read()
         }
     }
 

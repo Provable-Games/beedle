@@ -12,6 +12,7 @@ version = "0.1.0"
 dependencies = [
  "ekubo",
  "openzeppelin_token",
+ "openzeppelin_utils",
  "snforge_std",
 ]
 

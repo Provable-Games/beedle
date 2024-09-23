@@ -12,6 +12,7 @@ ekubo = { git = "https://github.com/EkuboProtocol/abis.git", rev = "edb6de8c9baf
 
 [dev-dependencies]
 snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.30.0" }
+openzeppelin_utils = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.16.0" }
 
 [[target.starknet-contract]]
 sierra = true
