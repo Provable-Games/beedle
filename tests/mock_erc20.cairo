@@ -16,7 +16,7 @@ pub(crate) mod DualCaseERC20Mock {
     #[storage]
     struct Storage {
         #[substorage(v0)]
-        erc20: ERC20Component::Storage
+        erc20: ERC20Component::Storageclaim_and_sell_proceeds
     }
 
     #[event]
