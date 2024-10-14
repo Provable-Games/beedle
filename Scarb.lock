@@ -18,8 +18,8 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_access"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 dependencies = [
  "openzeppelin_introspection",
  "openzeppelin_utils",
@@ -27,8 +27,8 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_account"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 dependencies = [
  "openzeppelin_introspection",
  "openzeppelin_utils",
@@ -36,8 +36,8 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_governance"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 dependencies = [
  "openzeppelin_access",
  "openzeppelin_introspection",
@@ -45,13 +45,13 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_introspection"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 
 [[package]]
 name = "openzeppelin_token"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 dependencies = [
  "openzeppelin_account",
  "openzeppelin_governance",
@@ -60,8 +60,8 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_utils"
-version = "0.16.0"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.16.0#ba00ce76a93dcf25c081ab2698da20690b5a1cfb"
+version = "0.17.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v0.17.0#bf5d02c25c989ccc24f3ab42ec649617d3f21289"
 
 [[package]]
 name = "snforge_scarb_plugin"

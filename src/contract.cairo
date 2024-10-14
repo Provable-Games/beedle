@@ -8,7 +8,11 @@ mod EkuboDistributedERC20 {
     use ekubo::types::keys::PoolKey;
     use ekubo::types::i129::i129;
     use ekubo::interfaces::core::{ICoreDispatcher, ICoreDispatcherTrait};
+    use ekubo::interfaces::erc20::IERC20Dispatcher;
     use ekubo::interfaces::positions::{IPositionsDispatcher, IPositionsDispatcherTrait};
+    use ekubo::interfaces::token_registry::{
+        ITokenRegistryDispatcher, ITokenRegistryDispatcherTrait
+    };
     use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl};
     use starknet::{get_contract_address, ContractAddress};
     use gerc20::constants::Errors;
@@ -35,6 +39,7 @@ mod EkuboDistributedERC20 {
         pool_id: u256,
         positions_dispatcher: IPositionsDispatcher,
         position_token_id: u64,
+        registry_dispatcher: ITokenRegistryDispatcher,
         reward_distribution_duration: u64,
         reward_token: ContractAddress,
         reward_distribution_rate: u128,
@@ -72,6 +77,7 @@ mod EkuboDistributedERC20 {
         core_address: ContractAddress,
         positions_address: ContractAddress,
         extension_address: ContractAddress,
+        registry_address: ContractAddress,
     ) {
         // init erc20
         self.erc20.initializer(name, symbol);
@@ -88,9 +94,15 @@ mod EkuboDistributedERC20 {
         self.deployed_at.write(current_time);
         self.tick_spacing.write(tick_spacing);
         self.pool_fee.write(pool_fee);
+        self
+            .registry_dispatcher
+            .write(ITokenRegistryDispatcher { contract_address: registry_address });
 
-        // mint total supply to contract
-        self.erc20.mint(positions_address, total_supply.into());
+        // mint total supply to self
+        self.erc20.mint(get_contract_address(), total_supply.into());
+
+        // register token with registry
+        _register_token(self);
     }
 
     #[abi(embed_v0)]
@@ -380,5 +392,17 @@ mod EkuboDistributedERC20 {
         };
 
         result
+    }
+
+    fn _register_token(self: @ContractState) {
+        // transfer one full token (1 * 10^18) to registry contract
+        self.erc20.transfer(registry_address, 1_000_000_000_000_000_000);
+
+        // register token by calling register_token on the registry contract
+        let registry_dispatcher = self.registry_dispatcher.read();
+
+        // register_token tkaes in a IERC20Dispatcher so we need to init one for our new erc20 token
+        let erc20_dispatcher = IERC20Dispatcher { contract_address: get_contract_address() };
+        registry_dispatcher.register_token(erc20_dispatcher);
     }
 }
