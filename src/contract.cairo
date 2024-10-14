@@ -102,7 +102,7 @@ mod EkuboDistributedERC20 {
         self.erc20.mint(get_contract_address(), total_supply.into());
 
         // register token with registry
-        _register_token(self);
+        _register_token(ref self);
     }
 
     #[abi(embed_v0)]
@@ -394,15 +394,14 @@ mod EkuboDistributedERC20 {
         result
     }
 
-    fn _register_token(self: @ContractState) {
-        // transfer one full token (1 * 10^18) to registry contract
-        self.erc20.transfer(registry_address, 1_000_000_000_000_000_000);
-
-        // register token by calling register_token on the registry contract
+    fn _register_token(ref self: ContractState) {
         let registry_dispatcher = self.registry_dispatcher.read();
-
-        // register_token tkaes in a IERC20Dispatcher so we need to init one for our new erc20 token
         let erc20_dispatcher = IERC20Dispatcher { contract_address: get_contract_address() };
+
+        // transfer one token to registry contract
+        self.erc20.transfer_from(get_contract_address(), registry_dispatcher.contract_address, 1);
+
+        // call register_token on the registry contract
         registry_dispatcher.register_token(erc20_dispatcher);
     }
 }
