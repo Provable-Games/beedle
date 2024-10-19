@@ -1,9 +1,14 @@
+// TODO:
+// 1. Add Burn function to the ERC20 Consumables
+// 2. Add Claim Starter Kit function to the ERC20 Consumables
+
 /// @title EkuboDistributedERC20
 /// @notice A contract for distributing ERC20 tokens using Ekubo's TWAMM (Time-Weighted Average
 /// Market Maker)
 /// @dev This contract extends the ERC20 standard with distribution functionality
 #[starknet::contract]
 mod EkuboDistributedERC20 {
+    use core::starknet::get_tx_info;
     use ekubo::extensions::interfaces::twamm::OrderKey;
     use ekubo::types::keys::PoolKey;
     use ekubo::types::i129::i129;
@@ -15,7 +20,7 @@ mod EkuboDistributedERC20 {
     };
     use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl};
     use starknet::{get_contract_address, ContractAddress};
-    use gerc20::constants::Errors;
+    use gerc20::constants::{Errors, MAX_TICK_SPACING, get_core_address, get_positions_address, get_twamm_extension_address, get_registry_address};
     use gerc20::interfaces::IEkuboDistributedERC20;
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
@@ -28,12 +33,12 @@ mod EkuboDistributedERC20 {
     struct Storage {
         core_dispatcher: ICoreDispatcher,
         deployed_at: u64,
+        distribution_start_delay: u64,
         distribution_end_time: u64,
         distribution_pool_fee: u128,
         distribution_start_time: u64,
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
-        extension_address: ContractAddress,
         payment_token: ContractAddress,
         pool_fee: u128,
         pool_id: u256,
@@ -43,8 +48,8 @@ mod EkuboDistributedERC20 {
         reward_distribution_duration: u64,
         reward_token: ContractAddress,
         reward_distribution_rate: u128,
-        tick_spacing: u32,
         token_distribution_rate: u128,
+        twamm_extension_address: ContractAddress,
     }
 
     #[event]
@@ -57,97 +62,69 @@ mod EkuboDistributedERC20 {
     /// @notice Initializes the EkuboDistributedERC20 contract
     /// @param name The name of the token
     /// @param symbol The symbol of the token
-    /// @param total_supply The total supply of tokens to mint
+    /// @param token_supply The total supply of tokens to mint
+    /// @param pool_fee The fee for the pool
+    /// @param end_time The end time of the token distribution
+    /// @param distribution_start_delay The delay for the token distribution
     /// @param payment_token The address of the token used for payments
     /// @param reward_token The address of the token to be purchased with proceeds
-    /// @param emission_duration The duration of the token distribution in seconds
-    /// @param core_address The address of the Ekubo core contract
-    /// @param positions_address The address of the Ekubo positions contract
-    /// @param extension_address The address of the Ekubo extension contract
     #[constructor]
     fn constructor(
         ref self: ContractState,
         name: ByteArray,
         symbol: ByteArray,
-        total_supply: u128,
+        token_supply: u128,
         pool_fee: u128,
-        tick_spacing: u32,
+        distribution_rate_days: u64,
+        distribution_duration_days: u64,
+        distribution_start_delay_seconds: u64,
+        reward_distribution_duration: u64,
         payment_token: ContractAddress,
         reward_token: ContractAddress,
-        core_address: ContractAddress,
-        positions_address: ContractAddress,
-        extension_address: ContractAddress,
-        registry_address: ContractAddress,
     ) {
         // init erc20
         self.erc20.initializer(name, symbol);
 
-        // store constructor params for getters
         self.payment_token.write(payment_token);
         self.reward_token.write(reward_token);
-        let current_time = starknet::get_block_timestamp();
-        self.core_dispatcher.write(ICoreDispatcher { contract_address: core_address });
-        self
-            .positions_dispatcher
-            .write(IPositionsDispatcher { contract_address: positions_address });
-        self.extension_address.write(extension_address);
-        self.deployed_at.write(current_time);
-        self.tick_spacing.write(tick_spacing);
+        self.deployed_at.write(starknet::get_block_timestamp());
         self.pool_fee.write(pool_fee);
-        self
-            .registry_dispatcher
-            .write(ITokenRegistryDispatcher { contract_address: registry_address });
+        self.distribution_start_delay.write(distribution_start_delay);
+        self.reward_distribution_duration.write(reward_distribution_duration);
 
-        // mint total supply to self
-        self.erc20.mint(get_contract_address(), total_supply.into());
+        let chain_id = get_tx_info().unbox().chain_id;
+        let core_dispatcher = ICoreDispatcher { contract_address: get_core_address(chain_id) };
+        let positions_dispatcher = IPositionsDispatcher { contract_address: get_positions_address(chain_id) };
+        let registry_dispatcher = ITokenRegistryDispatcher { contract_address: get_registry_address(chain_id) };
 
-        // register token with registry
+        self.core_dispatcher.write(core_dispatcher);
+        self.positions_dispatcher.write(positions_dispatcher);
+        self.registry_dispatcher.write(registry_dispatcher);
+        self.twamm_extension_address.write(get_twamm_extension_address(chain_id));
+        
+        // register new token with ekubo registry
         _register_token(ref self);
+
+        // initialize distribution pool
+        _init_distribution_pool(ref self);
     }
 
     #[abi(embed_v0)]
     impl EkuboDistributedERC20Impl of IEkuboDistributedERC20<ContractState> {
-        /// @notice Initializes an Ekubo pool for distributing the token supply via a TWAMM order
-        /// @dev This function should be called before starting the token distribution
-        fn init_distribution_pool(ref self: ContractState) {
-            assert(self.pool_id.read() == 0, Errors::DISTRIBUTION_POOL_ALREADY_INITIALIZED);
-            let core_dispatcher = self.core_dispatcher.read();
-            let initial_tick = i129 { mag: 0, sign: false };
-            let pool_key = _get_distribution_pool_key(@self);
-            let pool_id = core_dispatcher.initialize_pool(pool_key, initial_tick);
-            self.pool_id.write(pool_id);
-        }
-
-        /// @notice Distributes the entire token supply using a TWAP order
-        /// @param end_time The end time of the TWAP order
-        /// @dev This function should be called after initializing the distribution pool
-        fn start_token_distribution(ref self: ContractState, end_time: u64) {
-            assert(self.pool_id.read() != 0, Errors::DISTRIBUTION_POOL_NOT_INITIALIZED);
-            assert(self.position_token_id.read() == 0, Errors::TOKEN_DISTRIBUTION_ALREADY_STARTED);
-
-            let block_time = starknet::get_block_timestamp();
-            let start_time = (block_time / 16) * 16;
-
-            // transfer entire token supply to the positions contract
-            let positions_dispatcher = self.positions_dispatcher.read();
-            let total_supply = self.erc20.total_supply();
-            let order_key = _get_distribution_order_key(@self, start_time, end_time);
-            let (position_token_id, sale_rate) = positions_dispatcher
-                .mint_and_increase_sell_amount(order_key, total_supply.try_into().unwrap());
-
-            self.distribution_start_time.write(start_time);
-            self.distribution_end_time.write(end_time);
-            self.position_token_id.write(position_token_id);
-            self.token_distribution_rate.write(sale_rate);
+        /// @notice Starts the token distribution
+        /// @dev This function can only be called once, after the distribution delay has passed
+        fn start_token_distribution(ref self: ContractState) {
+            _assert_distribution_delay_passed(@self);
+            _assert_distribution_pool_initialized(@self);
+            _assert_token_distribution_not_started(@self);
+            _start_token_distribution(ref self);
         }
 
         /// @notice Claims proceeds from selling tokens and uses them to buy the game token
         /// @dev This function can be called periodically to reinvest proceeds
         fn claim_and_sell_proceeds(ref self: ContractState) {
-            assert(self.pool_id.read() != 0, Errors::DISTRIBUTION_POOL_NOT_INITIALIZED);
-            assert(
-                self.position_token_id.read() != 0, Errors::TOKEN_DISTRIBUTION_NOT_STARTED
-            ); // withdraw proceeds
+            _assert_token_distribution_started(@self);
+
             let positions_dispatcher = self.positions_dispatcher.read();
             let position_token_id = self.position_token_id.read();
             let start_time = _get_distribution_start_time(@self);
@@ -221,85 +198,61 @@ mod EkuboDistributedERC20 {
             _get_payment_token(self)
         }
 
-        fn get_extension_address(self: @ContractState) -> ContractAddress {
-            _get_extension_address(self)
+        fn get_twamm_extension_address(self: @ContractState) -> ContractAddress {
+            _get_twamm_extension_address(self)
         }
 
         fn get_reward_token(self: @ContractState) -> ContractAddress {
             _get_reward_token(self)
         }
-
-        fn get_tick_spacing(self: @ContractState) -> u32 {
-            _get_tick_spacing(self)
-        }
     }
 
-    #[inline(always)]
     fn _get_token_distribution_rate(self: @ContractState) -> u128 {
         self.token_distribution_rate.read()
     }
 
-    #[inline(always)]
     fn _get_reward_distribution_rate(self: @ContractState) -> u128 {
         self.reward_distribution_rate.read()
     }
 
-    #[inline(always)]
     fn _get_deployed_at(self: @ContractState) -> u64 {
         self.deployed_at.read()
     }
 
-    #[inline(always)]
     fn _get_distribution_end_time(self: @ContractState) -> u64 {
         self.distribution_end_time.read()
     }
 
-    #[inline(always)]
     fn _get_distribution_start_time(self: @ContractState) -> u64 {
         self.distribution_start_time.read()
     }
 
-    #[inline(always)]
     fn _get_pool_fee(self: @ContractState) -> u128 {
         self.pool_fee.read()
     }
 
-    #[inline(always)]
     fn _get_pool_id(self: @ContractState) -> u256 {
         self.pool_id.read()
     }
 
-    #[inline(always)]
     fn _get_position_token_id(self: @ContractState) -> u64 {
         self.position_token_id.read()
     }
 
-    #[inline(always)]
     fn _get_reward_distribution_duration(self: @ContractState) -> u64 {
-        assert(self.distribution_end_time.read() != 0, Errors::DISTRIBUTION_END_TIME_NOT_SET);
-        let start_time = _get_distribution_start_time(self);
-        let end_time = _get_distribution_end_time(self);
-        end_time - start_time
+        self.reward_distribution_duration.read()
     }
 
-    #[inline(always)]
     fn _get_payment_token(self: @ContractState) -> ContractAddress {
         self.payment_token.read()
     }
 
-    #[inline(always)]
-    fn _get_extension_address(self: @ContractState) -> ContractAddress {
-        self.extension_address.read()
+    fn _get_twamm_extension_address(self: @ContractState) -> ContractAddress {
+        self.twamm_extension_address.read()
     }
 
-    #[inline(always)]
     fn _get_reward_token(self: @ContractState) -> ContractAddress {
         self.reward_token.read()
-    }
-
-    #[inline(always)]
-    fn _get_tick_spacing(self: @ContractState) -> u32 {
-        self.tick_spacing.read()
     }
 
     /// @notice Creates a PoolKey for the distribution token pool
@@ -312,16 +265,16 @@ mod EkuboDistributedERC20 {
                 token0: this_token,
                 token1: payment_token,
                 fee: _get_pool_fee(self),
-                tick_spacing: _get_tick_spacing(self).into(),
-                extension: _get_extension_address(self),
+                tick_spacing: MAX_TICK_SPACING.into(),
+                extension: _get_twamm_extension_address(self),
             }
         } else {
             PoolKey {
                 token0: payment_token,
                 token1: this_token,
                 fee: _get_pool_fee(self),
-                tick_spacing: _get_tick_spacing(self).into(),
-                extension: _get_extension_address(self),
+                tick_spacing: MAX_TICK_SPACING.into(),
+                extension: _get_twamm_extension_address(self),
             }
         }
     }
@@ -338,7 +291,7 @@ mod EkuboDistributedERC20 {
             buy_token: _get_payment_token(self),
             fee: _get_pool_fee(self),
             start_time: start_time,
-            end_time: end_time,
+            end_time: end_time, 
         }
     }
 
@@ -395,13 +348,60 @@ mod EkuboDistributedERC20 {
     }
 
     fn _register_token(ref self: ContractState) {
+        // mint 1 token to registry contract to register it
         let registry_dispatcher = self.registry_dispatcher.read();
-        let erc20_dispatcher = IERC20Dispatcher { contract_address: get_contract_address() };
-
-        // transfer one token to registry contract
-        self.erc20.transfer_from(get_contract_address(), registry_dispatcher.contract_address, 1);
+        self.erc20.mint(registry_dispatcher.contract_address, 1000000000000000000);
 
         // call register_token on the registry contract
+        let erc20_dispatcher = IERC20Dispatcher { contract_address: get_contract_address() };
         registry_dispatcher.register_token(erc20_dispatcher);
+
+    }
+
+    fn _init_distribution_pool(ref self: ContractState) {
+        assert(self.pool_id.read() == 0, Errors::DISTRIBUTION_POOL_ALREADY_INITIALIZED);
+        let core_dispatcher = self.core_dispatcher.read();
+        let initial_tick = i129 { mag: 0, sign: false };
+        let pool_key = _get_distribution_pool_key(@self);
+        let pool_id = core_dispatcher.initialize_pool(pool_key, initial_tick);
+
+        // deposit some initial liquidity into the pool (1 $lord and 1 $new_token)
+        // https://github.com/EkuboProtocol/abis/blob/edb6de8c9baf515f1053bbab3d86825d54a63bc3/src/interfaces/positions.cairo#L99-L109
+        self.pool_id.write(pool_id);
+    }
+
+    fn _start_token_distribution(ref self: ContractState) {
+        let block_time = starknet::get_block_timestamp();
+        let start_time = (block_time / 16) * 16;
+
+        // mint token supply to the positions contract
+        let positions_dispatcher = self.positions_dispatcher.read();
+        self.erc20.mint(self.positions_dispatcher.read().contract_address, token_supply.into());
+        let order_key = _get_distribution_order_key(@self, start_time, end_time);
+        let (position_token_id, sale_rate) = positions_dispatcher
+            .mint_and_increase_sell_amount(order_key, token_supply.try_into().unwrap());
+
+        self.distribution_start_time.write(start_time);
+        self.distribution_end_time.write(end_time);
+        self.position_token_id.write(position_token_id);
+        self.token_distribution_rate.write(sale_rate);
+    }
+
+    fn _assert_distribution_delay_passed(self: @ContractState) {
+        let current_time = starknet::get_block_timestamp();
+        let start_time = self.deployed_at.read() + self.distribution_start_delay.read();
+        assert(current_time >= start_time, Errors::DISTRIBUTION_DELAY_STILL_ACTIVE);
+    }
+
+    fn _assert_distribution_pool_initialized(self: @ContractState) {
+        assert(self.pool_id.read() != 0, Errors::DISTRIBUTION_POOL_NOT_INITIALIZED);
+    }
+
+    fn _assert_token_distribution_not_started(self: @ContractState) {
+        assert(self.position_token_id.read() == 0, Errors::TOKEN_DISTRIBUTION_ALREADY_STARTED);
+    }
+
+    fn _assert_token_distribution_started(self: @ContractState) {
+        assert(self.position_token_id.read() != 0, Errors::TOKEN_DISTRIBUTION_NOT_STARTED);
     }
 }
