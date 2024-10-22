@@ -11,16 +11,22 @@ mod EkuboDistributedERC20 {
     use core::starknet::get_tx_info;
     use ekubo::extensions::interfaces::twamm::OrderKey;
     use ekubo::types::keys::PoolKey;
+    use ekubo::types::bounds::Bounds;
     use ekubo::types::i129::i129;
     use ekubo::interfaces::core::{ICoreDispatcher, ICoreDispatcherTrait};
-    use ekubo::interfaces::erc20::IERC20Dispatcher;
     use ekubo::interfaces::positions::{IPositionsDispatcher, IPositionsDispatcherTrait};
     use ekubo::interfaces::token_registry::{
         ITokenRegistryDispatcher, ITokenRegistryDispatcherTrait
     };
     use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::{get_contract_address, ContractAddress};
-    use gerc20::constants::{Errors, MAX_TICK_SPACING, get_core_address, get_positions_address, get_twamm_extension_address, get_registry_address};
+    use openzeppelin_token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
+
+    use starknet::{get_contract_address, ContractAddress, storage::{Map}};
+    use gerc20::constants::{
+        Errors, MAX_TICK_SPACING, get_core_address, get_positions_address,
+        get_twamm_extension_address, get_registry_address
+    };
     use gerc20::interfaces::IEkuboDistributedERC20;
 
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
@@ -31,18 +37,20 @@ mod EkuboDistributedERC20 {
 
     #[storage]
     struct Storage {
-        core_dispatcher: ICoreDispatcher,
-        deployed_at: u64,
-        distribution_start_delay: u64,
-        distribution_end_time: u64,
-        distribution_pool_fee: u128,
-        distribution_start_time: u64,
         #[substorage(v0)]
         erc20: ERC20Component::Storage,
-        payment_token: ContractAddress,
+        core_dispatcher: ICoreDispatcher,
+        deployed_at_timestamp: u64,
+        distribution_end_time: u64,
+        distribution_pool_fee: u128,
+        distribution_start_delay_seconds: u64,
+        distribution_start_time: u64,
+        liquidity_promotion_map: Map::<u64, u128>,
+        payment_token_dispatcher: IERC20Dispatcher,
         pool_fee: u128,
         pool_id: u256,
         positions_dispatcher: IPositionsDispatcher,
+        positions_nft_dispatcher: IERC721Dispatcher,
         position_token_id: u64,
         registry_dispatcher: ITokenRegistryDispatcher,
         reward_distribution_duration: u64,
@@ -56,16 +64,15 @@ mod EkuboDistributedERC20 {
     #[derive(Drop, starknet::Event)]
     enum Event {
         #[flat]
-        ERC20Event: ERC20Component::Event
+        ERC20Event: ERC20Component::Event,
     }
 
     /// @notice Initializes the EkuboDistributedERC20 contract
     /// @param name The name of the token
     /// @param symbol The symbol of the token
-    /// @param token_supply The total supply of tokens to mint
     /// @param pool_fee The fee for the pool
     /// @param end_time The end time of the token distribution
-    /// @param distribution_start_delay The delay for the token distribution
+    /// @param distribution_start_delay_seconds The delay for the token distribution
     /// @param payment_token The address of the token used for payments
     /// @param reward_token The address of the token to be purchased with proceeds
     #[constructor]
@@ -73,10 +80,9 @@ mod EkuboDistributedERC20 {
         ref self: ContractState,
         name: ByteArray,
         symbol: ByteArray,
-        token_supply: u128,
         pool_fee: u128,
-        distribution_rate_days: u64,
-        distribution_duration_days: u64,
+        distribution_rate_tokens_per_day: u64,
+        distribution_duration_days: u16,
         distribution_start_delay_seconds: u64,
         reward_distribution_duration: u64,
         payment_token: ContractAddress,
@@ -85,28 +91,51 @@ mod EkuboDistributedERC20 {
         // init erc20
         self.erc20.initializer(name, symbol);
 
-        self.payment_token.write(payment_token);
         self.reward_token.write(reward_token);
-        self.deployed_at.write(starknet::get_block_timestamp());
+        self.deployed_at_timestamp.write(starknet::get_block_timestamp());
         self.pool_fee.write(pool_fee);
-        self.distribution_start_delay.write(distribution_start_delay);
+        self.distribution_start_delay_seconds.write(distribution_start_delay_seconds);
         self.reward_distribution_duration.write(reward_distribution_duration);
 
         let chain_id = get_tx_info().unbox().chain_id;
-        let core_dispatcher = ICoreDispatcher { contract_address: get_core_address(chain_id) };
-        let positions_dispatcher = IPositionsDispatcher { contract_address: get_positions_address(chain_id) };
-        let registry_dispatcher = ITokenRegistryDispatcher { contract_address: get_registry_address(chain_id) };
 
-        self.core_dispatcher.write(core_dispatcher);
-        self.positions_dispatcher.write(positions_dispatcher);
-        self.registry_dispatcher.write(registry_dispatcher);
+        // @dev since twamm extension address is chain dependent and it'll be used a lot
+        // we store it here for efficient future access
         self.twamm_extension_address.write(get_twamm_extension_address(chain_id));
-        
+
+        // store payment token dispatcher
+        self.payment_token_dispatcher.write(IERC20Dispatcher { contract_address: payment_token });
+
+        // store core dispatcher
+        let core_address = get_core_address(chain_id);
+        let core_dispatcher = ICoreDispatcher { contract_address: core_address };
+        self.core_dispatcher.write(core_dispatcher);
+
+        // store positions dispatcher
+        let positions_address = get_positions_address(chain_id);
+        let positions_dispatcher = IPositionsDispatcher { contract_address: positions_address };
+        self.positions_dispatcher.write(positions_dispatcher);
+
+        // store positions nft dispatcher
+        let positions_nft_address = positions_dispatcher.get_nft_address();
+        let positions_nft_dispatcher = IERC721Dispatcher {
+            contract_address: positions_nft_address
+        };
+        self.positions_nft_dispatcher.write(positions_nft_dispatcher);
+
+        // store registry dispatcher
+        let registry_address = get_registry_address(chain_id);
+        let registry_dispatcher = ITokenRegistryDispatcher { contract_address: registry_address };
+        self.registry_dispatcher.write(registry_dispatcher);
+
         // register new token with ekubo registry
         _register_token(ref self);
 
         // initialize distribution pool
         _init_distribution_pool(ref self);
+
+        // start token distribution
+        _start_token_distribution(ref self);
     }
 
     #[abi(embed_v0)]
@@ -115,9 +144,77 @@ mod EkuboDistributedERC20 {
         /// @dev This function can only be called once, after the distribution delay has passed
         fn start_token_distribution(ref self: ContractState) {
             _assert_distribution_delay_passed(@self);
-            _assert_distribution_pool_initialized(@self);
             _assert_token_distribution_not_started(@self);
             _start_token_distribution(ref self);
+        }
+
+        fn provide_initial_liquidity(ref self: ContractState, amount: u64) {
+            // assert pre-release phase
+
+            // Transfer `payment_token` from the caller to this contract
+            let caller_address = starknet::get_caller_address();
+            let payment_token_address = self.get_payment_token();
+            let payment_token_dispatcher = IERC20Dispatcher {
+                contract_address: payment_token_address
+            };
+            payment_token_dispatcher
+                .transfer_from(caller_address, get_contract_address(), amount.into());
+
+            // TODO: here we need to calculate amount of the Consumable based on the initial tick
+            // configuration for example if this is the Attack Potion with a starting price of 1/2
+            // of a $lord then if they provided 10 $lords we should mint 20 Attack Potions
+            self.erc20.mint(get_contract_address(), amount.into());
+
+            // Get the existing pool_key from the contract
+            let pool_key = self.get_distribution_pool_key();
+
+            // provide initial liquidity to the pool
+            let positions_dispatcher = self.positions_dispatcher.read();
+            let (_, position_token) = positions_dispatcher
+                .mint_and_deposit(
+                    pool_key,
+                    Bounds {
+                        lower: i129 { mag: 0, sign: false }, upper: i129 { mag: 0, sign: false }
+                    },
+                    0
+                );
+
+            // mint the liquidity provider a blank Ekubo Position NFT
+            // @dev we do this becasue we can't give them the actual position NFT otherwise they
+            // could immediately reclaim their liquidity including the promotional Consumables
+            // Giving them a blank NFT provides them with transferrable ownership of the underlying
+            // liquidity
+            let position_owner_token_id = positions_dispatcher.mint_v2(get_contract_address());
+
+            // map the blank position NFT to the actual position token for future auth
+            self.liquidity_promotion_map.write(position_owner_token_id, position_token);
+
+            // transfer the position owner NFT to the liquidity provider (caller)
+            let positions_nft_address = positions_dispatcher.get_nft_address();
+            // create ERC721 Dispatcher
+            let erc721_dispatcher = IERC721Dispatcher { contract_address: positions_nft_address };
+            erc721_dispatcher
+                .transfer_from(
+                    get_contract_address(), caller_address, position_owner_token_id.into()
+                );
+        }
+
+        fn claim_initial_liquidity(ref self: ContractState, position_owner_token_id: u64) {
+            // first assert the caller owns the position_owner_token_id they are claiming
+            let caller_address = starknet::get_caller_address();
+            let positions_dispatcher = self.positions_dispatcher.read();
+            let position_owner_nft_address = positions_dispatcher.get_nft_address();
+            let erc721_dispatcher = IERC721Dispatcher {
+                contract_address: position_owner_nft_address
+            };
+            let owner = erc721_dispatcher.owner_of(position_owner_token_id);
+            assert(owner == caller_address, Errors::NOT_POSITION_OWNER);
+            // first we
+        // if you are doing this after the full promotional period.
+        // you get initial liquidity + free consumables + trading fees
+        // if you are doing this before the full promotional period.
+        // you just get your initial liquidity back + trading fees -> contract burnus the
+        // Consumable side of the LP
         }
 
         /// @notice Claims proceeds from selling tokens and uses them to buy the game token
@@ -152,8 +249,8 @@ mod EkuboDistributedERC20 {
             _get_reward_distribution_rate(self)
         }
 
-        fn get_deployed_at(self: @ContractState) -> u64 {
-            _get_deployed_at(self)
+        fn get_deployed_at_timestamp(self: @ContractState) -> u64 {
+            _get_deployed_at_timestamp(self)
         }
 
         fn get_distribution_end_time(self: @ContractState) -> u64 {
@@ -215,8 +312,8 @@ mod EkuboDistributedERC20 {
         self.reward_distribution_rate.read()
     }
 
-    fn _get_deployed_at(self: @ContractState) -> u64 {
-        self.deployed_at.read()
+    fn _get_deployed_at_timestamp(self: @ContractState) -> u64 {
+        self.deployed_at_timestamp.read()
     }
 
     fn _get_distribution_end_time(self: @ContractState) -> u64 {
@@ -260,23 +357,18 @@ mod EkuboDistributedERC20 {
     fn _get_distribution_pool_key(self: @ContractState) -> PoolKey {
         let this_token = get_contract_address();
         let payment_token = _get_payment_token(self);
-        if this_token < payment_token {
-            PoolKey {
-                token0: this_token,
-                token1: payment_token,
-                fee: _get_pool_fee(self),
-                tick_spacing: MAX_TICK_SPACING.into(),
-                extension: _get_twamm_extension_address(self),
-            }
+        let fee = _get_pool_fee(self);
+        let tick_spacing = MAX_TICK_SPACING.into();
+        let extension = _get_twamm_extension_address(self);
+
+        // ekubo requires token0 to be less than token1
+        let (token0, token1) = if this_token < payment_token {
+            (this_token, payment_token)
         } else {
-            PoolKey {
-                token0: payment_token,
-                token1: this_token,
-                fee: _get_pool_fee(self),
-                tick_spacing: MAX_TICK_SPACING.into(),
-                extension: _get_twamm_extension_address(self),
-            }
-        }
+            (payment_token, this_token)
+        };
+
+        PoolKey { token0, token1, fee, tick_spacing, extension }
     }
 
     /// @notice Creates an OrderKey for the distribution token order
@@ -291,7 +383,7 @@ mod EkuboDistributedERC20 {
             buy_token: _get_payment_token(self),
             fee: _get_pool_fee(self),
             start_time: start_time,
-            end_time: end_time, 
+            end_time: end_time,
         }
     }
 
@@ -353,9 +445,10 @@ mod EkuboDistributedERC20 {
         self.erc20.mint(registry_dispatcher.contract_address, 1000000000000000000);
 
         // call register_token on the registry contract
-        let erc20_dispatcher = IERC20Dispatcher { contract_address: get_contract_address() };
+        let erc20_dispatcher = ekubo::interfaces::erc20::IERC20Dispatcher {
+            contract_address: get_contract_address()
+        };
         registry_dispatcher.register_token(erc20_dispatcher);
-
     }
 
     fn _init_distribution_pool(ref self: ContractState) {
@@ -389,12 +482,9 @@ mod EkuboDistributedERC20 {
 
     fn _assert_distribution_delay_passed(self: @ContractState) {
         let current_time = starknet::get_block_timestamp();
-        let start_time = self.deployed_at.read() + self.distribution_start_delay.read();
+        let start_time = self.deployed_at_timestamp.read()
+            + self.distribution_start_delay_seconds.read();
         assert(current_time >= start_time, Errors::DISTRIBUTION_DELAY_STILL_ACTIVE);
-    }
-
-    fn _assert_distribution_pool_initialized(self: @ContractState) {
-        assert(self.pool_id.read() != 0, Errors::DISTRIBUTION_POOL_NOT_INITIALIZED);
     }
 
     fn _assert_token_distribution_not_started(self: @ContractState) {
