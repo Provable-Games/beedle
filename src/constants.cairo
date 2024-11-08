@@ -1,4 +1,6 @@
 use starknet::{ContractAddress, contract_address_const};
+use ekubo::types::bounds::Bounds;
+use ekubo::types::i129::i129;
 
 pub mod Errors {
     pub const TOKEN_DISTRIBUTION_ALREADY_STARTED: felt252 = 'distribution already started';
@@ -8,11 +10,20 @@ pub mod Errors {
     pub const DISTRIBUTION_END_TIME_NOT_SET: felt252 = 'end time not set';
     pub const TOKEN_ALREADY_REGISTERED: felt252 = 'token already registered';
     pub const DISTRIBUTION_DELAY_STILL_ACTIVE: felt252 = 'distribution delay still active';
+    pub const NOT_POSITION_TOKEN_OWNER: felt252 = 'not position token owner';
+    pub const INVALID_LIQUIDITY_PROMOTION_DURATION: felt252 = 'invalid liquidity lockup';
+    pub const DISTRIBUTION_DURATION_TOO_LONG: felt252 = 'distribution duration too long';
+    pub const DISTRIBUTION_ALREADY_STARTED: felt252 = 'distribution already started';
 }
 
 const MAINNET_CHAIN_ID: felt252 = 0x534e5f4d41494e;
 const SEPOLIA_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941;
 pub const MAX_TICK_SPACING: u32 = 354892;
+pub const FULL_RANGE: Bounds =
+    Bounds { lower: i129 { mag: 0, sign: false }, upper: i129 { mag: 0, sign: false } };
+
+pub const MAX_DURATION_SECONDS: u32 = 0xFFFFFFFF;
+pub const VALID_END_TIME_MULTIPLE: u32 = 0x10000000;
 
 pub fn get_core_address(chain_id: felt252) -> ContractAddress {
     if chain_id == MAINNET_CHAIN_ID {

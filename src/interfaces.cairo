@@ -4,16 +4,16 @@ use ekubo::types::keys::PoolKey;
 
 #[starknet::interface]
 pub trait IEkuboDistributedERC20<TContractState> {
-    fn start_token_distribution(ref self: TContractState);
     fn claim_and_sell_proceeds(ref self: TContractState);
-    fn provide_initial_liquidity(ref self: TContractState, amount: u64);
+    fn provide_initial_liquidity(ref self: TContractState, amount: u64) -> (u128, u64, u64);
+    fn claim_initial_liquidity(ref self: TContractState, position_owner_token_id: u64);
     fn get_deployed_at_timestamp(self: @TContractState) -> u64;
     fn get_distribution_end_time(self: @TContractState) -> u64;
     fn get_distribution_order_key(self: @TContractState) -> OrderKey;
     fn get_distribution_pool_key(self: @TContractState) -> PoolKey;
     fn get_distribution_start_time(self: @TContractState) -> u64;
     fn get_twamm_extension_address(self: @TContractState) -> ContractAddress;
-    fn get_payment_token(self: @TContractState) -> ContractAddress;
+    fn get_payment_token_address(self: @TContractState) -> ContractAddress;
     fn get_pool_fee(self: @TContractState) -> u128;
     fn get_pool_id(self: @TContractState) -> u256;
     fn get_position_token_id(self: @TContractState) -> u64;
