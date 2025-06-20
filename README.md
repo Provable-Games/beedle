@@ -1,7 +1,6 @@
 # Beedle
-Beedle is a auto-price-discovery and liquidity bootstrapping protocol built on top of the Ekubo Protocol.
+Beedle is a token launcher and liquidity bootstrapping protocol written in [Cairo](https://github.com/starkware-libs/cairo) built on top of [Ekubo](https://github.com/EkuboProtocol).
 ![ezgif-2fd68cccb93460](https://github.com/user-attachments/assets/1c8ad7b0-0299-4227-a666-c5f4ffd21a00)
-
 ## Overview
 
 Distribution mechanism:
